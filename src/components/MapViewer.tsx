@@ -203,6 +203,20 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
   }, [layersState]);
 
+  // Listen for full backup layers restoration
+  useEffect(() => {
+    const handleLayersRestored = (event: Event) => {
+      const customEvt = event as CustomEvent;
+      if (customEvt.detail) {
+        setLayersState(customEvt.detail);
+      }
+    };
+    window.addEventListener("glorantha_layers_restored", handleLayersRestored);
+    return () => {
+      window.removeEventListener("glorantha_layers_restored", handleLayersRestored);
+    };
+  }, []);
+
   // Weather & Atmosphere Active Region State
   const [activeWeatherRegion, setActiveWeatherRegion] = useState<RegionKey>(
     campaign?.weather?.selectedRegion || "sartar"

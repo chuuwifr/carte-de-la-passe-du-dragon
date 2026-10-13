@@ -17,10 +17,12 @@ import {
   Check,
   AlertCircle,
   Loader2,
+  Archive,
 } from "lucide-react";
 import { Campaign, GMNote, PointOfInterest, RegionKey } from "../types";
 import { DRAGON_PASS_LOCATIONS } from "../data/locations";
 import { getProceduralGloranthaLore } from "../utils/loreGenerator";
+import { exportFullAppState, downloadFullAppBackup } from "../utils/storage";
 
 interface GmPlanningToolsProps {
   campaign: Campaign;
@@ -29,6 +31,7 @@ interface GmPlanningToolsProps {
   onSelectLocationById: (poiId: string) => void;
   onImportCampaign: (jsonString: string) => void;
   onResetCampaign: () => void;
+  onOpenBackupModal?: () => void;
 }
 
 export const GmPlanningTools: React.FC<GmPlanningToolsProps> = ({
@@ -38,6 +41,7 @@ export const GmPlanningTools: React.FC<GmPlanningToolsProps> = ({
   onSelectLocationById,
   onImportCampaign,
   onResetCampaign,
+  onOpenBackupModal,
 }) => {
   const [activeSection, setActiveSection] = useState<"notes" | "encounter-gen" | "npc-gen" | "backup">("notes");
 
@@ -170,18 +174,24 @@ export const GmPlanningTools: React.FC<GmPlanningToolsProps> = ({
     }
   };
 
-  // Export JSON Backup
-  const handleDownloadBackup = () => {
-    const jsonString = JSON.stringify(campaign, null, 2);
-    const blob = new Blob([jsonString], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const downloadAnchor = document.createElement("a");
-    downloadAnchor.href = url;
-    downloadAnchor.download = `runequest_campagne_${Date.now()}.json`;
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-    URL.revokeObjectURL(url);
+  // Export Complete App Backup
+  const handleDownloadBackup = async () => {
+    try {
+      const fullBackup = await exportFullAppState(campaign);
+      downloadFullAppBackup(fullBackup);
+    } catch (e) {
+      // Fallback to simple JSON export
+      const jsonString = JSON.stringify(campaign, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.href = url;
+      downloadAnchor.download = `runequest_campagne_${Date.now()}.json`;
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (
@@ -565,69 +575,96 @@ export const GmPlanningTools: React.FC<GmPlanningToolsProps> = ({
 
       {/* SECTION 4: BACKUP & LOCAL PERSISTENCE */}
       {activeSection === "backup" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto animate-fade-in">
-          {/* Export card */}
-          <div className="bg-[#16161a]/95 rounded-2xl p-6 border border-[#2d2d35] shadow-xl space-y-4 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Download className="w-4 h-4 text-[#e2ba7d]" />
-                <h3 className="text-base font-bold text-[#e2ba7d]">Exporter la Campagne (JSON)</h3>
+        <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
+          {/* Top banner linking to full backup modal */}
+          {onOpenBackupModal && (
+            <div className="bg-[#1f1f26] border border-[#e2ba7d50] rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#e2ba7d20] border border-[#e2ba7d40] flex items-center justify-center text-[#e2ba7d] shrink-0">
+                  <Archive className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">
+                    Centre de Sauvegarde & Restauration Intégrale
+                  </h3>
+                  <p className="text-xs text-[#8e8e93]">
+                    Exportez ou restaurez 100% de l'application (campagne, carte PDF, tracés de guerre, calques) via une interface dédiée.
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-[#8e8e93] leading-relaxed">
-                Téléchargez l'intégralité de vos héros, quêtes, marqueurs personnalisés, notes de session et calendrier sous format fichier JSON pour archivage local ou partage avec un autre MJ.
-              </p>
-            </div>
 
-            <button
-              onClick={handleDownloadBackup}
-              className="w-full py-3 bg-[#e2ba7d] hover:bg-[#edd09e] text-black font-bold text-xs rounded-full shadow-lg flex items-center justify-center gap-2 transition"
-            >
-              <Download className="w-4 h-4" />
-              <span>Télécharger le Fichier .JSON</span>
-            </button>
-          </div>
-
-          {/* Import card */}
-          <div className="bg-[#16161a]/95 rounded-2xl p-6 border border-[#2d2d35] shadow-xl space-y-4 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Upload className="w-4 h-4 text-[#e2ba7d]" />
-                <h3 className="text-base font-bold text-[#e2ba7d]">Restaurer / Importer une Sauvegarde</h3>
-              </div>
-              <p className="text-xs text-[#8e8e93] leading-relaxed mb-3">
-                Collez le contenu d'un fichier JSON de campagne sauvegardé pour restaurer votre état de jeu.
-              </p>
-              <textarea
-                value={importJsonText}
-                onChange={(e) => setImportJsonText(e.target.value)}
-                rows={3}
-                placeholder="Collez ici le JSON de campagne..."
-                className="w-full bg-[#25252b] border border-[#3a3a45] rounded-xl p-3 text-xs font-mono text-[#d1d1d6] outline-none focus:border-[#e2ba7d] resize-none"
-              />
-            </div>
-
-            <div className="flex gap-2">
               <button
-                onClick={() => {
-                  if (!importJsonText.trim()) return;
-                  onImportCampaign(importJsonText.trim());
-                  setImportJsonText("");
-                }}
-                className="flex-1 py-2.5 bg-[#e2ba7d] hover:bg-[#edd09e] text-black font-bold text-xs rounded-full shadow-md transition"
+                onClick={onOpenBackupModal}
+                className="px-4 py-2 bg-[#e2ba7d] hover:bg-[#edd09e] text-black font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 whitespace-nowrap shrink-0"
               >
-                Restaurer
+                <Archive className="w-3.5 h-3.5" />
+                <span>Ouvrir le Centre de Sauvegarde</span>
               </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Export card */}
+            <div className="bg-[#16161a]/95 rounded-2xl p-6 border border-[#2d2d35] shadow-xl space-y-4 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Download className="w-4 h-4 text-[#e2ba7d]" />
+                  <h3 className="text-base font-bold text-[#e2ba7d]">Exporter l'Archive Complète</h3>
+                </div>
+                <p className="text-xs text-[#8e8e93] leading-relaxed">
+                  Téléchargez l'intégralité de vos héros, quêtes, marqueurs, tracés militaires, notes de session et calendrier sous format fichier JSON pour archivage local ou partage.
+                </p>
+              </div>
+
               <button
-                onClick={() => {
-                  if (confirm("Réinitialiser la campagne aux données par défaut de 1625 ST ?")) {
+                onClick={handleDownloadBackup}
+                className="w-full py-3 bg-[#e2ba7d] hover:bg-[#edd09e] text-black font-bold text-xs rounded-full shadow-lg flex items-center justify-center gap-2 transition"
+              >
+                <Download className="w-4 h-4" />
+                <span>Télécharger le Fichier .JSON</span>
+              </button>
+            </div>
+
+            {/* Import card */}
+            <div className="bg-[#16161a]/95 rounded-2xl p-6 border border-[#2d2d35] shadow-xl space-y-4 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Upload className="w-4 h-4 text-[#e2ba7d]" />
+                  <h3 className="text-base font-bold text-[#e2ba7d]">Restaurer / Importer une Sauvegarde</h3>
+                </div>
+                <p className="text-xs text-[#8e8e93] leading-relaxed mb-3">
+                  Collez le contenu d'un fichier JSON de campagne ou d'archive complète pour restaurer votre état de jeu.
+                </p>
+                <textarea
+                  value={importJsonText}
+                  onChange={(e) => setImportJsonText(e.target.value)}
+                  rows={3}
+                  placeholder="Collez ici le JSON de sauvegarde..."
+                  className="w-full bg-[#25252b] border border-[#3a3a45] rounded-xl p-3 text-xs font-mono text-[#d1d1d6] outline-none focus:border-[#e2ba7d] resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (!importJsonText.trim()) return;
+                    onImportCampaign(importJsonText.trim());
+                    setImportJsonText("");
+                  }}
+                  className="flex-1 py-2.5 bg-[#e2ba7d] hover:bg-[#edd09e] text-black font-bold text-xs rounded-full shadow-md transition"
+                >
+                  Restaurer
+                </button>
+                <button
+                  onClick={() => {
                     onResetCampaign();
-                  }
-                }}
-                className="px-4 py-2.5 bg-[#25252b] border border-[#3a3a45] hover:bg-red-950/50 hover:border-red-800 text-[#8e8e93] hover:text-red-300 text-xs rounded-full transition"
-                title="Remettre la campagne à zéro"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
+                  }}
+                  className="px-4 py-2.5 bg-[#25252b] border border-[#3a3a45] hover:bg-red-950/50 hover:border-red-800 text-[#8e8e93] hover:text-red-300 text-xs rounded-full transition"
+                  title="Remettre la campagne aux valeurs par défaut"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

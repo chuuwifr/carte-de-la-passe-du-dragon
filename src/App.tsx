@@ -18,6 +18,7 @@ import {
   Sparkles,
   Plus,
   FileText,
+  Archive,
 } from "lucide-react";
 import { MapViewer } from "./components/MapViewer";
 import { LocationDrawer } from "./components/LocationDrawer";
@@ -26,6 +27,7 @@ import { LoreArchive } from "./components/LoreArchive";
 import { GmPlanningTools } from "./components/GmPlanningTools";
 import { PoiEditorModal } from "./components/PoiEditorModal";
 import { PdfMapSettingsModal } from "./components/PdfMapSettingsModal";
+import { BackupRestoreModal } from "./components/BackupRestoreModal";
 import { DRAGON_PASS_LOCATIONS } from "./data/locations";
 import { DEFAULT_CAMPAIGN } from "./data/sampleCampaign";
 import { POI_CATEGORIES } from "./data/categories";
@@ -35,6 +37,8 @@ import {
   loadFullCampaignFromStorage,
   saveCampaignToStorage,
   loadPdfBufferFromStorage,
+  importFullAppState,
+  resetFullAppState,
 } from "./utils/storage";
 import { loadPdfDocument, renderPdfPageToDataUrl } from "./utils/pdfMapRenderer";
 
@@ -44,6 +48,9 @@ export default function App() {
 
   // GM Mode toggle
   const [isGmMode, setIsGmMode] = useState<boolean>(true);
+
+  // Full App Backup & Restore Modal toggle
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState<boolean>(false);
 
   // Campaign State (with instant LocalStorage init & IndexedDB full restore)
   const [campaign, setCampaign] = useState<Campaign>(() => getInitialCampaignFromLocalStorage());
@@ -337,23 +344,30 @@ export default function App() {
   };
 
   // Import Campaign JSON
-  const handleImportCampaign = (jsonStr: string) => {
+  // Import Campaign / Full App JSON
+  const handleImportCampaign = async (jsonStr: string) => {
     try {
       const parsed = JSON.parse(jsonStr);
-      if (parsed && parsed.title && Array.isArray(parsed.heroes)) {
-        setCampaign(parsed);
-        alert("Campagne importée avec succès !");
-      } else {
-        alert("Format de fichier de campagne invalide.");
+      const res = await importFullAppState(parsed);
+      setCampaign(res.campaign);
+    } catch (e: any) {
+      try {
+        const parsed = JSON.parse(jsonStr);
+        if (parsed && (parsed.title || parsed.id)) {
+          setCampaign(parsed);
+        }
+      } catch (_) {
+        console.warn("Failed to import campaign string", e);
       }
-    } catch (e) {
-      alert("Erreur lors de la lecture du JSON : format invalide.");
     }
   };
 
   // Reset Campaign
-  const handleResetCampaign = () => {
-    if (confirm("Voulez-vous réinitialiser toutes les données de campagne aux valeurs par défaut ?")) {
+  const handleResetCampaign = async () => {
+    try {
+      const defaultCamp = await resetFullAppState();
+      setCampaign(defaultCamp);
+    } catch (_) {
       setCampaign(DEFAULT_CAMPAIGN);
     }
   };
@@ -455,6 +469,17 @@ export default function App() {
           >
             {isGmMode ? <Eye className="w-3.5 h-3.5 text-red-400" /> : <EyeOff className="w-3.5 h-3.5" />}
             <span className="hidden sm:inline">{isGmMode ? "Mode MJ" : "Mode Joueur"}</span>
+          </button>
+
+          {/* Full Backup & Restore Trigger Button */}
+          <button
+            id="btn-backup-restore-modal"
+            onClick={() => setIsBackupModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition border bg-[#25252b] hover:bg-[#2d2d35] text-[#e2ba7d] border-[#e2ba7d40] hover:border-[#e2ba7d] shadow-sm"
+            title="Sauvegarder ou restaurer l'intégralité de l'application"
+          >
+            <Archive className="w-3.5 h-3.5 text-[#e2ba7d]" />
+            <span className="hidden md:inline">Sauvegarde</span>
           </button>
 
           {/* Quick Filter toggle in Map view */}
@@ -678,6 +703,7 @@ export default function App() {
               onSelectLocationById={handleSelectLocationById}
               onImportCampaign={handleImportCampaign}
               onResetCampaign={handleResetCampaign}
+              onOpenBackupModal={() => setIsBackupModalOpen(true)}
             />
           </div>
         )}
@@ -706,6 +732,18 @@ export default function App() {
           }
         }
         onUpdateBackgroundConfig={handleUpdateBackgroundConfig}
+      />
+
+      {/* Full App Backup & Restore Modal */}
+      <BackupRestoreModal
+        isOpen={isBackupModalOpen}
+        onClose={() => setIsBackupModalOpen(false)}
+        campaign={campaign}
+        onCampaignRestored={(newCamp) => {
+          setCampaign(newCamp);
+        }}
+        isGmMode={isGmMode}
+        activeView={activeView}
       />
     </div>
   );
