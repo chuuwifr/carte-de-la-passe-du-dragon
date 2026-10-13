@@ -1,0 +1,6 @@
+{
+  "name": "Cartographe de la Passe du Dragon - RuneQuest Glorantha",
+  "description": "Carte interactive et atlas de la Passe du Dragon 1625 ST pour RuneQuest Glorantha avec outils inspirés de Project Zomboid Map (étages/niveaux, outils de dessin tactique, zones de rayon, minimap radar, coordonnées et explorateur de POI), rendu haute résolution PDF, mesure de distances et météo dynamique.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

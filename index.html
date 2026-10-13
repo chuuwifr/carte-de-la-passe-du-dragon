@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cartographe de la Passe du Dragon - RuneQuest Glorantha</title>
+    <meta name="description" content="Carte interactive et atlas de la Passe du Dragon 1625 ST pour RuneQuest Glorantha avec outils inspirés de Project Zomboid Map (étages/niveaux, outils de dessin tactique, zones de rayon, minimap radar, coordonnées et explorateur de POI), rendu haute résolution PDF, mesure de distances et météo dynamique." />
+    <meta property="og:title" content="Cartographe de la Passe du Dragon - RuneQuest Glorantha" />
+    <meta property="og:description" content="Carte interactive et atlas de la Passe du Dragon 1625 ST pour RuneQuest Glorantha avec outils inspirés de Project Zomboid Map (étages/niveaux, outils de dessin tactique, zones de rayon, minimap radar, coordonnées et explorateur de POI), rendu haute résolution PDF, mesure de distances et météo dynamique." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      (function() {
+        // Prevent Vite HMR WebSocket rejection in proxy/iframe environment where HMR is disabled
+        window.addEventListener('unhandledrejection', function(event) {
+          var reason = event.reason;
+          if (
+            reason &&
+            (String(reason.message || '').includes('WebSocket closed without opened') ||
+             String(reason || '').includes('WebSocket') ||
+             String(reason.stack || '').includes('@vite/client') ||
+             String(reason.stack || '').includes('createWebSocketModuleRunnerTransport'))
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+
+        window.addEventListener('error', function(event) {
+          if (
+            (event.filename && event.filename.includes('@vite/client')) ||
+            (event.message && String(event.message).includes('WebSocket')) ||
+            (event.error && event.error.stack && (
+              event.error.stack.includes('@vite/client') ||
+              event.error.stack.includes('createWebSocketModuleRunnerTransport')
+            ))
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+
+        // Safe stub for vite-hmr WebSocket protocol when running in sandboxed dev container
+        var NativeWebSocket = window.WebSocket;
+        if (NativeWebSocket) {
+          window.WebSocket = function(url, protocols) {
+            var isHmr = false;
+            if (protocols === 'vite-hmr') isHmr = true;
+            if (Array.isArray(protocols) && protocols.indexOf('vite-hmr') !== -1) isHmr = true;
+            if (typeof url === 'string' && url.indexOf('token=') !== -1 && url.indexOf('vite') !== -1) isHmr = true;
+
+            if (isHmr) {
+              var target = new EventTarget();
+              target.readyState = 1;
+              target.OPEN = 1;
+              target.CLOSED = 3;
+              target.CLOSING = 2;
+              target.CONNECTING = 0;
+              target.send = function() {};
+              target.close = function() {};
+              setTimeout(function() {
+                try {
+                  target.dispatchEvent(new Event('open'));
+                } catch (e) {}
+              }, 10);
+              return target;
+            }
+            return new NativeWebSocket(url, protocols);
+          };
+          window.WebSocket.prototype = NativeWebSocket.prototype;
+          window.WebSocket.CONNECTING = 0;
+          window.WebSocket.OPEN = 1;
+          window.WebSocket.CLOSING = 2;
+          window.WebSocket.CLOSED = 3;
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
